@@ -39,7 +39,8 @@ guess.eth <- guess.eth %>%
   mutate(avg_eth = rowMode_char(as.matrix(guess.eth[, 4:7])))
 
 guess.weight <- guess[-c(1:2),] %>%
-  select(JPID=ID2, name, sex, w_1=15, w_2=16, w_3=17, w_4=18, w_5=19)
+  select(JPID=ID2, name, sex, w_1=15, w_2=16, w_3=17, w_4=18, w_5=19) %>%
+  mutate(w_1 = ifelse(w_1=="I", "IS", w_1))
 guess.weight <- guess.weight %>%
   select(JPID, name, sex) %>%
   mutate(avg_w = rowMode_char(as.matrix(guess.weight[, 4:7])))
@@ -95,10 +96,13 @@ write_csv(meta, "data/derivatives/jeopardata/participants-metadata.csv")
 areas <- read_csv("data/derivatives/jeopardata/facial.areas.csv") %>%
   select(JPID, starts_with("A_")) %>% # only keep distances of int
   mutate(JPID = sub("\\.png", "", JPID)) %>%
-  filter(!(JPID %in% c("JD0886", "JD0405]", "JD0700", "JD0622"))) %>%
+  # filter(!(JPID %in% c("JD0886", "JD0405]", "JD0700", "JD0622"))) %>%
   mutate(A_M = A_M_R+A_M_L) %>% select(-"A_M_R", -"A_M_L")%>%
+  mutate(A_N = A_N_R+A_N_L) %>% select(-"A_N_R", -"A_N_L")%>%
+  mutate(A_CHK_R = A_CHK_I_R+A_CHK_O_R) %>% select(-"A_CHK_I_R", -"A_CHK_O_R")%>%
+  mutate(A_CHK_L = A_CHK_I_L+A_CHK_O_L) %>% select(-"A_CHK_I_L", -"A_CHK_O_L")%>%
   pivot_longer(cols = starts_with("A_"), names_to = "area") %>%
-  mutate(area = sub("_[R|L]", "", area)) %>% group_by(JPID, area) %>% dplyr::summarise(value = mean(value, na.rm = T)) %>% ungroup() %>%
+  # mutate(area = sub("_[R|L]", "", area)) %>% group_by(JPID, area) %>% dplyr::summarise(value = mean(value, na.rm = T)) %>% ungroup() %>%
   pivot_wider(names_from = "area", values_from = "value", id_cols = JPID) %>%
   full_join(meta) %>%
   drop_na() %>%
@@ -152,10 +156,10 @@ res.areas <- cbind(JPID= df2$JPID,
 # corr res areas with avg_score
 res.areas %>% 
   left_join(meta) %>%
-  # filter(avg_score > 100) %>%
+  filter(avg_score < 20000) %>%
   pivot_longer(cols = starts_with("A_"), names_to = "area") %>%
   # mutate(area = sub("_[R|L]", "", area)) %>% group_by(JPID, area) %>% mutate(value = mean(value, na.rm = T)) %>%
-  pivot_longer(cols = colnames(meta)[2:6], names_to = "avg_measure", values_to = "avg") %>%
+  pivot_longer(cols = colnames(meta)[2:8], names_to = "avg_measure", values_to = "avg") %>%
   ggplot(aes(x=avg, y=value))+
   geom_point()+
   geom_smooth(method="lm") +

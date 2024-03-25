@@ -11,31 +11,36 @@ setwd(project.dir)
 ################################################################################
 # read scores 
 scores <- readxl::read_xlsx("data/raw/money_shows_metadata.xlsx", sheet = 3)[-1,] %>%
-  mutate(name = tolower(name))
+  mutate(name = tolower(name)) %>%
+  filter(! JPID %in% c("JD0921", "JD0919", "JD0920")) # drop the wrong data points (copy paste issue)
 scores.avg <- scores %>%
   separate(cor_incorrect, into = c("correct_count", "incorrect_count"),
            sep = "/") %>%
+  # distinct(name, .keep_all = T) %>% # I don't think we should include multiple times for the same person
   mutate_at(.vars = c(7:12,14), .funs = function(x) as.numeric(parse_number(x))) %>%
   drop_na(final_score) %>%
+  filter(final_score >=0) %>%
   filter(BUZ<=60, ATT<=60) %>%
   distinct() %>%
-  select(name, final_score, ATT, BUZ, correct_count, incorrect_count) %>%
+  select(name, final_score, ATT, BUZ, correct_count, incorrect_count, correct_percentage, BUZ_percentage) %>%
   group_by(name) %>%
   dplyr::summarise(avg_score = mean(final_score, na.rm = T),
                    avg_ATT = mean(ATT, na.rm = T),
                    avg_BUZ = mean(BUZ, na.rm = T),
+                   avg_BUZ_per = mean(BUZ_percentage, na.rm = T),
                    avg_corr = mean(correct_count, na.rm = T),
+                   avg_corr_per = mean(correct_percentage, na.rm = T),
                    avg_incorr = mean(incorrect_count, na.rm = T)) %>% 
   distinct()
 # save
 write_rds(scores.avg, "data/derivatives/jeopardata/scores-avg.rds")
 ##
 scores.avg %>%
-  pivot_longer(cols = colnames(scores.avg)[2:6], names_to = "score") %>%
+  pivot_longer(cols = colnames(scores.avg)[2:8], names_to = "score") %>%
   ggplot(aes(value)) +
   geom_histogram(bins = 40) +
   facet_wrap(~score, scales = "free")
-ggsave("figs/distribution-of-avg-score.png", bg = "white",
+ggsave("figs/jeopardata/distribution-of-avg-score.png", bg = "white",
        width = 6, height = 6, units = "in", dpi = 360)
 ################################################################################
 ################################################################################
@@ -45,22 +50,24 @@ ggsave("figs/distribution-of-avg-score.png", bg = "white",
 ################################################################################
 # get pairs distances
 int.pairs <- c("EB_R", "EB_L", "E_R", "E_L", "M_H", "N_V", "N_H", "M_V", "EB_C","EB_N_R", "EB_N_L", "EB_E_R", "EB_E_L","NT_E_R", "NT_E_L","EB_M_R", "EB_M_L","E_M_R", "E_M_L")
-pairs.dis <- read_csv("data/derivatives/pairs-distances.csv") %>%
-  select(PID=te_id, paste0("P_", int.pairs)) %>% # only keep distances of int
-  mutate(PID = sub("\\.png", "", PID)) %>%
+pairs.dis <- read_csv("data/derivatives/jeopardata/pairs-distances.csv") %>%
+  select(JPID, paste0("P_", int.pairs)) %>% # only keep distances of int
+  mutate(JPID = sub("\\.png", "", JPID)) %>%
+  left_join(scores %>% select(JPID, name)) %>%
   left_join(scores.avg) %>%
   distinct(name, .keep_all = T)
 
 # plot correlation bet distances and money
 pairs.dis %>%
-  filter(avg_score <= 100000) %>%
+  filter(avg_score <= 20000) %>%
+  mutate(avg_score = scale(avg_score, scale = T, center = T)[,1]) %>%
   pivot_longer(cols = starts_with("P_"), names_to = "pair", values_to = "v1") %>%
   ggplot(aes(x=avg_score, y=v1)) +
   geom_point()+geom_smooth(method = "lm") + ggpubr::stat_cor(color = "red")+
   facet_wrap(~pair, scales = "free") + 
-  labs(y="measured distance", caption = paste0("n(samples<=100,000): ", 
-                                               nrow(pairs.dis %>% filter(avg_score <= 100000))))
-ggsave("figs/corr_facial-distances-and-avg_score-less-than-100k.png", bg = "white",
+  labs(y="measured distance", caption = paste0("n(samples<=20,000): ", 
+                                               nrow(pairs.dis %>% filter(avg_score <= 20000))))
+ggsave("figs/jeopardata/corr_facial-distances-and-avg_score-less-than-20k.png", bg = "white",
        width = 12, height = 12, units = "in", dpi = 360)
 ################################################################################
 ################################################################################
@@ -71,23 +78,65 @@ ggsave("figs/corr_facial-distances-and-avg_score-less-than-100k.png", bg = "whit
 ################################################################################
 ################################################################################
 # get facial areas
-areas <- read_csv("data/derivatives/facial.areas.csv") %>%
-  select(PID=te_id, starts_with("A_")) %>% # only keep distances of int
-  mutate(PID = sub("\\.png", "", PID)) %>%
+areas <- read_csv("data/derivatives/jeopardata/facial.areas.csv") %>%
+  select(JPID, starts_with("A_")) %>% # only keep distances of int
+  mutate(JPID = sub("\\.png", "", JPID)) %>%
+  left_join(scores %>% select(JPID, name)) %>%
   left_join(scores.avg) %>%
   distinct(name, .keep_all = T)
 
 # plot correlation bet areas and avg score
 areas %>%
-  filter(avg_score <= 100000) %>%
+  filter(avg_score <= 20000) %>%
   pivot_longer(cols = starts_with("A_"), names_to = "area", values_to = "v1") %>%
   ggplot(aes(x=avg_score, y=v1)) +
   geom_point()+ geom_smooth(method = "lm") + ggpubr::stat_cor(color = "red")+
   facet_wrap(~area, scales = "free") + 
-  labs(y="measured distance", caption = paste0("n(samples<=100,000): ", 
-                                               nrow(pairs.dis %>% filter(avg_score <= 100000))))
-ggsave("figs/corr_facial-areas-and-avg_score-less-than-100k.png", bg = "white",
+  labs(y="measured distance", caption = paste0("n(samples<=20,000): ", 
+                                               nrow(pairs.dis %>% filter(avg_score <= 20000))))
+ggsave("figs/jeopardata/corr_facial-areas-and-avg_score-less-than-20k.png", bg = "white",
        width = 12, height = 12, units = "in", dpi = 360)
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+# stopped
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
 ################################################################################
 ################################################################################
 # build a RF to predict acore from measurements

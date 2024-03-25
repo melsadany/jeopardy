@@ -83,6 +83,10 @@ ggsave("figs/corr-of-judgements-w-score-less-than-100k.png", bg="white",
 areas <- read_csv("data/derivatives/facial.areas.csv") %>%
   select(PID=te_id, starts_with("A_")) %>% # only keep distances of int
   mutate(PID = sub("\\.png", "", PID)) %>%
+  mutate(A_M = A_M_R+A_M_L) %>% select(-"A_M_R", -"A_M_L")%>%
+  mutate(A_N = A_N_R+A_N_L) %>% select(-"A_N_R", -"A_N_L")%>%
+  mutate(A_CHK_R = A_CHK_I_R+A_CHK_O_R) %>% select(-"A_CHK_I_R", -"A_CHK_O_R")%>%
+  mutate(A_CHK_L = A_CHK_I_L+A_CHK_O_L) %>% select(-"A_CHK_I_L", -"A_CHK_O_L")%>%
   left_join(scores.avg) %>%
   distinct(name, .keep_all = T) %>%
   mutate(PID = ifelse(PID=="J121", "J119", PID))

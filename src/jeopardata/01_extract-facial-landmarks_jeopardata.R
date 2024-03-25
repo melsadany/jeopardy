@@ -18,11 +18,11 @@ cmd <- paste("python3", py.sc,
 system(cmd)
 #######
 # read the landmarks csv, and save them with matched IDs
-system(paste0("mv clean_coords.csv ", "data/derivatives/landmarks-jeopardata_AR.csv"))
+system(paste0("mv clean2_coords.csv ", "data/derivatives/landmarks-jeopardata_JP.csv"))
 #####
 ######
-landmarks <- cbind(read_csv("data/derivatives/landmarks-jeopardata_AR.csv")) %>%
-  filter(!filename %in% c("JD0400.jpg", "JD0367.jpg", "JD0131.jpg", "JD0462.jpg", "JD0645.jpg")) %>% # drop duplicated unwanted pics
+landmarks <- cbind(read_csv("data/derivatives/landmarks-jeopardata_JP.csv")) %>%
+  # filter(!filename %in% c("JD0400.jpg", "JD0367.jpg", "JD0131.jpg", "JD0462.jpg", "JD0645.jpg")) %>% # drop duplicated unwanted pics
   filter(QCPASS!="N") %>%
   rename(JPID = filename) %>%
   mutate(JPID = sub("\\.[a-z]*", "", JPID)) %>%
@@ -38,7 +38,7 @@ main.distances <- data.frame(from = c(17, 22, 36, 42, 48, 27, 31,51,21,21,22,17,
                              label = c("EB_R", "EB_L", "E_R", "E_L", "M_H", "N_V", "N_H", "M_V", "EB_C","EB_N_R", "EB_N_L", "EB_E_R", "EB_E_L","NT_E_R", "NT_E_L","EB_M_R", "EB_M_L","E_M_R", "E_M_L"))
 all.distances <- data.frame(t(combn(keep, 2))) %>%
   rownames_to_column("pair") 
-registerDoMC(cores = 2)
+registerDoMC(cores = 6)
 distances <- foreach(j = 1:nrow(landmarks), .combine = rbind) %dopar% {
   p.landmarks <- landmarks[j,] %>%
     pivot_longer(cols = c(contains("x"), contains("y")), names_to = "coord") %>%
