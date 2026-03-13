@@ -1,12 +1,11 @@
 ################################################################################
-#                         extract facial landmarks and features                #
 ################################################################################
-rm(list = ls())
-gc()
-source("/Dedicated/jmichaelson-wdata/msmuhammad/msmuhammad-source.R")
+rm(list = ls());gc()
+device <- ifelse(grepl("/LSS/", system("cd &pwd", intern = T)), "IDAS", "argon")
+source(paste0(ifelse(device == "IDAS", "~/LSS", "/Dedicated"),"/jmichaelson-wdata/msmuhammad/msmuhammad-source.R"))
 ################################################################################
 ################################################################################
-project.dir <- "/Dedicated/jmichaelson-wdata/msmuhammad/projects/jeopardy"
+project.dir <- correct_path("/Dedicated/jmichaelson-wdata/msmuhammad/projects/jeopardy")
 setwd(project.dir)
 ################################################################################
 ################################################################################
